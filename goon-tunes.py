@@ -1,8 +1,8 @@
 import os, sys, time
-from moviepy.editor import *
+from pydub import AudioSegment
 from nordvpn_switcher import initialize_VPN,rotate_VPN,terminate_VPN
 from pytube import Playlist, YouTube
-from shutil import rmtree
+from shutil import Error, rmtree
 from pathlib import Path as p
 
 def progress(count, total, status=''):
@@ -17,12 +17,17 @@ def progress(count, total, status=''):
     sys.stdout.flush() 
 
 def getPlaylist(url):
-    YOUTUBE_STREAM_AUDIO = "140"
+    YOUTUBE_STREAM_AUDIO = '140'
     pl = Playlist(url)    
     
-    initialize_VPN(stored_settings=1)
-    rotate_VPN()
-    time.sleep(5)
+    try:
+        rotate_VPN()
+
+    except Error:
+        initialize_VPN(stored_settings=1)
+        rotate_VPN()
+
+    time.sleep(3)
     print('Starting download.')
     
     mp4_count = 1
@@ -59,15 +64,28 @@ def folderPrep():
 
 def audioConversion(audio_format):
     audio_format = audio_format.lower()
-    
+    print('Conversion Process to {0} Starting.'.format(audio_format))
+        
     # convert from mp4 to user specified type
-    mp3_count = 1    
+    convert_file_count = 1    
     for songs in os.listdir(mp4_dir):
-        mp4_file = mp4_dir +'\\' + songs
-        convert_file = convert_dir + '\\' + songs.replace('mp4', audio_format)
-        audioFile = AudioFileClip(mp4_file)
-        audioFile.write_audiofile(convert_file)
-        mp3_count += 1
+        track_title = songs.split('- ', 1)
+        song = track_title.pop(1)
+        song = song.replace('.mp4','')
+        
+        total_songs = len(os.listdir(mp4_dir))
+        progress(convert_file_count, total_songs, status='#')
+        
+        mp4_file = '{0}\\{1}'.format(mp4_dir,songs)
+        convert_file = '{0}\\{1} - {2}.{3}'.format(convert_dir, artist, song, audio_format)
+        audioFile = AudioSegment.from_file(mp4_file, format='mp4')
+        audioFile.export(convert_file,
+                         format=audio_format, 
+                         bitrate='320k',
+                         tags={"album": album_name, "artist": artist, "title": song, "track": '{0}\{1}'.format(convert_file_count,total_songs)}
+                        # , cover='{0}\\unnamed.jpg'.format(downloads_path)
+                        )
+        convert_file_count += 1
     
     print('Audio converstion complete, deleting downloads ({0}).'.format(mp4_dir))
     rmtree(mp4_dir, ignore_errors=True)
@@ -83,7 +101,7 @@ playlist_url = input('Enter YouTube Music Playlist URL --> ')
 pl = Playlist(playlist_url)
 
 # get output format for files from user
-output_format = input('Enter Desired Audio Output Format (WAV, MP3, etc) --> ')
+output_format = input('Enter Desired Audio Output Format (WAV, MP3, M4A, OGG) --> ')
 
 # for getting the artist name
 artist_url = list(pl).pop(0)
@@ -97,11 +115,9 @@ title_list = full_title.split('- ', 1)
 album_name = title_list.pop(1)
 
 # folders based on name of playlist and artist
-mp4_dir = '{0}\\{1} - {2}\\'.format(downloads_path, artist, album_name)
-convert_dir = '{0}\\{1} - {2}\\'.format(record_cabinet, artist, album_name)
+mp4_dir = '{0}\\{1} - {2}'.format(downloads_path, artist, album_name)
+convert_dir = '{0}\\{1} - {2}'.format(record_cabinet, artist, album_name)
 
 folderPrep()
 getPlaylist(playlist_url)
 audioConversion(output_format)
-        
-
