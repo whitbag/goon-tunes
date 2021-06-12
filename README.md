@@ -13,6 +13,6 @@
 - pandas<br>
 - selenium 4.0 beta<br></p>
 =======
-- pytube
+- pytube<br>
 - nordvpn_switcher (*can be commeted out/deleted and will work without*)<br></p>
 >>>>>>> bc2e6f2f01bd2919822f8ba8c98da255a99e8463
